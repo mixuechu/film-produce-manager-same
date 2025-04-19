@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import SparkMD5 from "spark-md5";
 
 // 字段类型定义
 interface Character { name: string; 描述: string; 主要出场场景编号: number[]; }
@@ -12,6 +13,7 @@ interface Section { 序号: number|string; 内容要点: string; }
 export default function ParsePage() {
   const searchParams = useSearchParams();
   const script = searchParams.get("script") || "";
+  const scriptHash = searchParams.get("scriptHash") || SparkMD5.hash(script);
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -35,6 +37,20 @@ export default function ParsePage() {
       return;
     }
     setLoading(true);
+    // 新增：先查本地缓存
+    const cacheKey = `film_structured_data_${scriptHash}`;
+    let cached: any = null;
+    try {
+      const cacheRaw = localStorage.getItem(cacheKey);
+      if (cacheRaw) cached = JSON.parse(cacheRaw);
+    } catch {}
+    if (cached) {
+      setData(cached);
+      setEditableChars(cached.角色 || []);
+      setLoading(false);
+      return;
+    }
+    // ... existing fetch 逻辑 ...
     fetch("/api/parse-script", {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -47,14 +63,15 @@ export default function ParsePage() {
       .then(res => {
         setData(res);
         setEditableChars(res.角色 || []);
-        // 持久化数据到localStorage，供顺场表等读取
-        try { localStorage.setItem("film_structured_data", JSON.stringify(res)); } catch {}
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(res));
+        } catch {}
       })
       .catch(err => {
         setError((typeof err==='string') ? err : (err?.error||"解析失败"));
       })
       .finally(()=>setLoading(false));
-  }, [script]);
+  }, [script, scriptHash]);
 
   // 编辑角色表格的增删改
   function handleCharChange(val: string, idx: number, key: keyof Character) {
@@ -71,8 +88,13 @@ export default function ParsePage() {
   }
   function saveChars() {
     if (!data) return;
-    setData({ ...data, 角色: editableChars });
+    const updated = { ...data, 角色: editableChars };
+    setData(updated);
     setEditMode(false);
+    // 覆盖本地缓存，保持一致
+    try {
+      localStorage.setItem(`film_structured_data_${scriptHash}`, JSON.stringify(updated));
+    } catch {}
   }
 
   return (

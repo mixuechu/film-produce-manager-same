@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import SparkMD5 from "spark-md5";
 
 export default function NewProjectPage() {
   const [mode, setMode] = useState<'text'|'file'|''>('');
@@ -28,7 +29,8 @@ export default function NewProjectPage() {
         setLoading(false);
         return;
       }
-      router.push(`/project/parse?script=${encodeURIComponent(text)}`);
+      const scriptHash = SparkMD5.hash(text);
+      router.push(`/project/parse?script=${encodeURIComponent(text)}&scriptHash=${scriptHash}`);
     } catch (error) {
       alert('解析文件失败，请重试');
     } finally {
@@ -55,7 +57,8 @@ export default function NewProjectPage() {
           <form className="flex flex-col gap-4" onSubmit={e => {
             e.preventDefault();
             if (textInput.trim().length===0) return;
-            router.push(`/project/parse?script=${encodeURIComponent(textInput)}`);
+            const scriptHash = SparkMD5.hash(textInput);
+            router.push(`/project/parse?script=${encodeURIComponent(textInput)}&scriptHash=${scriptHash}`);
           }}>
             <textarea
               placeholder="请粘贴剧本内容..."
