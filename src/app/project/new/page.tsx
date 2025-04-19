@@ -10,7 +10,6 @@ export default function NewProjectPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // 文件表单提交逻辑
   async function handleFileSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) return;
@@ -30,7 +29,8 @@ export default function NewProjectPage() {
         return;
       }
       const scriptHash = SparkMD5.hash(text);
-      router.push(`/project/parse?script=${encodeURIComponent(text)}&scriptHash=${scriptHash}`);
+      try { localStorage.setItem(`film_script_raw_${scriptHash}`, text); } catch {}
+      router.push(`/project/parse?scriptHash=${scriptHash}`);
     } catch (error) {
       alert('解析文件失败，请重试');
     } finally {
@@ -58,7 +58,8 @@ export default function NewProjectPage() {
             e.preventDefault();
             if (textInput.trim().length===0) return;
             const scriptHash = SparkMD5.hash(textInput);
-            router.push(`/project/parse?script=${encodeURIComponent(textInput)}&scriptHash=${scriptHash}`);
+            try { localStorage.setItem(`film_script_raw_${scriptHash}`, textInput); } catch {}
+            router.push(`/project/parse?scriptHash=${scriptHash}`);
           }}>
             <textarea
               placeholder="请粘贴剧本内容..."

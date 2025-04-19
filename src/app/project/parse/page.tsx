@@ -12,8 +12,12 @@ interface Section { 序号: number|string; 内容要点: string; }
 
 export default function ParsePage() {
   const searchParams = useSearchParams();
-  const script = searchParams.get("script") || "";
-  const scriptHash = searchParams.get("scriptHash") || SparkMD5.hash(script);
+  const scriptHash = searchParams.get("scriptHash");
+  // 读取原文
+  let script = '';
+  if (scriptHash) {
+    script = typeof window !== 'undefined' ? localStorage.getItem(`film_script_raw_${scriptHash}`) || '' : '';
+  }
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -32,12 +36,12 @@ export default function ParsePage() {
   const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
-    if (!script) {
+    if (!script || !scriptHash) {
       setError("缺少剧本内容，请返回重新导入");
       return;
     }
     setLoading(true);
-    // 新增：先查本地缓存
+    // 缓存结构化key
     const cacheKey = `film_structured_data_${scriptHash}`;
     let cached: any = null;
     try {
@@ -50,7 +54,7 @@ export default function ParsePage() {
       setLoading(false);
       return;
     }
-    // ... existing fetch 逻辑 ...
+    // 发请求AI解析
     fetch("/api/parse-script", {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -71,7 +75,7 @@ export default function ParsePage() {
         setError((typeof err==='string') ? err : (err?.error||"解析失败"));
       })
       .finally(()=>setLoading(false));
-  }, [script, scriptHash]);
+  }, [scriptHash]);
 
   // 编辑角色表格的增删改
   function handleCharChange(val: string, idx: number, key: keyof Character) {
@@ -107,7 +111,7 @@ export default function ParsePage() {
           <div className="flex flex-col gap-6">
             <div>
               <h3 className="font-semibold">剧本原文：</h3>
-              <pre className="whitespace-pre-wrap p-3 bg-zinc-100 rounded border border-zinc-200 max-h-60 overflow-y-auto text-sm">{data.originScript}</pre>
+              <pre className="whitespace-pre-wrap p-3 bg-zinc-100 rounded border border-zinc-200 max-h-60 overflow-y-auto text-sm">{script}</pre>
             </div>
             <div>
               <h3 className="font-semibold flex items-center gap-3">角色列表
